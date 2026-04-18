@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capacidad del Proceso — Six Sigma</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #2a2a3a;
+    --accent: #00e5ff;
+    --accent2: #ff4d6d;
+    --accent3: #c8ff00;
+    --text: #e8e8f0;
+    --muted: #666680;
+    --ok: #00e5a0;
+    --warn: #ffb300;
+    --bad: #ff4d6d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 4px; padding: 12px 24px; flex-wrap: wrap;
+  }
+  nav button {
+    background: none; border: none; color: var(--muted);
+    font-family: 'Space Mono', monospace; font-size: 11px;
+    padding: 6px 14px; border-radius: 4px; cursor: pointer;
+    transition: all .2s; text-transform: uppercase; letter-spacing: 1px;
+  }
+  nav button:hover { color: var(--text); background: var(--border); }
+  nav button.active { color: var(--bg); background: var(--accent); }
+
+  /* SECTIONS */
+  section { display: none; padding: 40px 24px; max-width: 960px; margin: 0 auto; animation: fadeIn .3s ease; }
+  section.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+  h1 { font-size: clamp(28px,5vw,52px); font-weight: 800; line-height: 1.1; }
+  h2 { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+  h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+  p { line-height: 1.7; color: #aaaacc; font-size: 15px; margin-bottom: 12px; }
+
+  .tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    padding: 3px 10px; border-radius: 2px;
+    background: var(--border); color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin-bottom: 20px;
+  }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 16px; margin-bottom: 24px; }
+  .metric-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; text-align: center;
+  }
+  .metric-card .val {
+    font-family: 'Space Mono', monospace; font-size: 36px; font-weight: 700;
+    line-height: 1;
+  }
+  .metric-card .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 6px; }
+  .metric-card .verdict { font-size: 12px; font-weight: 700; margin-top: 8px; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+
+  /* FORMULA */
+  .formula {
+    font-family: 'Space Mono', monospace;
+    background: var(--surface); border-left: 3px solid var(--accent);
+    padding: 16px 20px; border-radius: 0 8px 8px 0;
+    margin: 16px 0; font-size: 14px; color: var(--accent);
+  }
+
+  /* SLIDERS */
+  .slider-group { margin-bottom: 20px; }
+  .slider-label {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Space Mono', monospace; font-size: 13px; margin-bottom: 8px;
+  }
+  .slider-label span:last-child {
+    background: var(--accent); color: var(--bg); padding: 2px 10px;
+    border-radius: 4px; font-weight: 700;
+  }
+  input[type=range] {
+    width: 100%; -webkit-appearance: none; appearance: none;
+    height: 4px; border-radius: 2px; background: var(--border);
+    outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--accent); border: 2px solid var(--bg);
+    cursor: pointer; transition: transform .1s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+  /* CANVAS */
+  canvas { width: 100%; border-radius: 8px; display: block; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    background: var(--surface); padding: 10px 14px; text-align: left;
+    font-family: 'Space Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface); }
+
+  /* FPY */
+  .process-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+  }
+  .process-row label {
+    font-family: 'Space Mono', monospace; font-size: 12px;
+    color: var(--muted); min-width: 80px;
+  }
+  .process-row input[type=number] {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Space Mono', monospace; font-size: 14px;
+    padding: 8px 12px; border-radius: 6px; width: 90px; outline: none;
+  }
+  .process-row input:focus { border-color: var(--accent); }
+  .process-yield {
+    font-family: 'Space Mono', monospace; font-size: 13px;
+    padding: 6px 14px; border-radius: 4px; background: var(--surface);
+    min-width: 80px; text-align: center;
+  }
+  .btn {
+    background: var(--accent); color: var(--bg); border: none;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
+    padding: 10px 22px; border-radius: 6px; cursor: pointer;
+    transition: opacity .2s; margin-top: 8px;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-ghost {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 4px;
+    font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700;
+  }
+  .badge-ok { background: rgba(0,229,160,.15); color: var(--ok); }
+  .badge-warn { background: rgba(255,179,0,.15); color: var(--warn); }
+  .badge-bad { background: rgba(255,77,109,.15); color: var(--bad); }
+
+  .highlight-box {
+    border: 1px solid var(--accent3);
+    background: rgba(200,255,0,.05);
+    border-radius: 8px; padding: 16px 20px; margin-top: 16px;
+  }
+  .highlight-box p { color: var(--accent3); font-weight: 600; margin: 0; }
+
+  /* Inline number input next to slider */
+  .slider-num-input {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--accent); font-family: 'Space Mono', monospace; font-size: 13px;
+    font-weight: 700; padding: 4px 8px; border-radius: 6px;
+    width: 72px; outline: none; text-align: center;
+  }
+  .slider-num-input:focus { border-color: var(--accent); }
+
+  /* CPK indicator bar */
+  .cpk-bar-wrap { margin: 16px 0; }
+  .cpk-bar-track {
+    height: 12px; background: var(--border); border-radius: 6px;
+    position: relative; overflow: hidden;
+  }
+  .cpk-bar-fill {
+    height: 100%; border-radius: 6px;
+    transition: width .4s cubic-bezier(.4,0,.2,1), background .4s;
+  }
+
+  /* BELL CURVE SVG */
+  #bell-wrap { position: relative; }
+
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--bg); font-weight: 800; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .step-row { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
+  .step-content { flex: 1; }
+
+  /* FPY flow */
+  .flow-chain {
+    display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    margin: 16px 0;
+  }
+  .flow-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; text-align: center;
+    min-width: 80px;
+  }
+  .flow-box .pname { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  .flow-box .pval { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; margin-top: 2px; }
+  .flow-arrow { color: var(--border); font-size: 20px; padding: 0 4px; }
+
+  .sigma-table td:first-child { font-family: 'Space Mono', monospace; }
+
+  /* Intro hero */
+  .hero { padding: 60px 0 20px; }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub { font-size: 16px; color: var(--muted); margin-top: 12px; max-width: 560px; line-height: 1.6; }
+  .pill-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+  .pill {
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 6px 16px; font-size: 12px; color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+  .divider { height: 1px; background: var(--border); margin: 28px 0; }
+</style>
+</head>
+<body>
+
+<nav id="mainNav">
+  <button class="active" onclick="showSection('intro',this)">Inicio</button>
+  <button onclick="showSection('conceptos',this)">Conceptos</button>
+  <button onclick="showSection('indices',this)">Cp / Cpk</button>
+  <button onclick="showSection('cpk-lab',this)">⚡ Lab CPK</button>
+  <button onclick="showSection('fpy-teoria',this)">FPY Teoría</button>
+  <button onclick="showSection('fpy-lab',this)">⚡ Lab FPY</button>
+  <button onclick="showSection('sigma-tabla',this)">Tabla σ</button>
+</nav>
+
+<!-- ====== INICIO ====== -->
+<section id="intro" class="active">
+  <div class="hero">
+    <div class="tag">Six Sigma · Herramientas Avanzadas de Calidad</div>
+    <h1>Capacidad del<br>Proceso &<br><span>First Pass Yield</span></h1>
+    <p class="hero-sub">Guía interactiva completa. Entiende la teoría, manipula los parámetros en tiempo real y observa cómo reacciona el proceso.</p>
+    <div class="pill-row">
+      <span class="pill">CPK / CP</span>
+      <span class="pill">σ nivel</span>
+      <span class="pill">FPY</span>
+      <span class="pill">DPU / DPMO</span>
+      <span class="pill">Yield Final</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="card-grid">
+    <div class="card" style="border-color:#00e5ff33">
+      <h3>Pregunta clave</h3>
+      <p>¿Puede mi proceso producir <strong style="color:var(--text)">consistentemente</strong> dentro de las especificaciones del cliente?</p>
+    </div>
+    <div class="card" style="border-color:#ff4d6d33">
+      <h3>El enemigo</h3>
+      <p>La <strong style="color:var(--text)">variación</strong> y el <strong style="color:var(--text)">descentrado</strong>. Cp mide uno; Cpk mide ambos juntos.</p>
+    </div>
+    <div class="card" style="border-color:#c8ff0033">
+      <h3>Meta Six Sigma</h3>
+      <p>Cpk ≥ 2.0 equivale a <strong style="color:var(--text)">3.4 defectos por millón</strong> de oportunidades.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== CONCEPTOS ====== -->
+<section id="conceptos">
+  <div class="tag">Base teórica</div>
+  <h2>Conceptos Fundamentales</h2>
+
+  <div class="card">
+    <h3>Proceso</h3>
+    <p>Combinación de <strong style="color:var(--text)">máquinas, herramientas, métodos, materiales y personal</strong> que generan un resultado medible. Sin proceso definido, no hay capacidad medible.</p>
+  </div>
+
+  <div class="card">
+    <h3>Capacidad de Máquina vs. Capacidad de Proceso</h3>
+    <p><strong style="color:var(--text)">Capacidad de máquina:</strong> variación de corto plazo — misma máquina, mismo operador, mismo lote. Ideal de laboratorio.</p>
+    <p><strong style="color:var(--text)">Capacidad de proceso:</strong> variación de largo plazo — cambios de turno, operador, lote de material. Esto es la realidad de producción.</p>
+    <div class="highlight-box"><p>⚠ Siempre usar capacidad de proceso para tomar decisiones de negocio. La máquina sola no representa lo que pasa en piso.</p></div>
+  </div>
+
+  <div class="card">
+    <h3>Voz del Proceso vs. Voz del Cliente</h3>
+    <p><strong style="color:var(--text)">Voz del Proceso (VOP):</strong> variabilidad natural del sistema → representada por ±3σ.</p>
+    <p><strong style="color:var(--text)">Voz del Cliente (VOC):</strong> límites de especificación que impone el cliente → LSL (inferior) y USL (superior).</p>
+    <p>Capacidad del proceso = comparar VOP contra VOC. El proceso debe <em>caber</em> dentro del cliente, no al revés.</p>
+  </div>
+
+  <div class="card">
+    <h3>Planeación del Estudio de Capacidad — 12 Reglas</h3>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:10px">Errores aquí invalidan todos los índices calculados después.</p>
+    <table>
+      <tr><th>#</th><th>Regla</th></tr>
+      <tr><td>1</td><td>Selecciona la máquina más representativa del grupo</td></tr>
+      <tr><td>2</td><td>Define condiciones fijas: velocidad, temperatura, presión, ciclo</td></tr>
+      <tr><td>3</td><td>Incluye variación real de operadores si afecta el resultado</td></tr>
+      <tr><td>4</td><td>Mínimo 50 unidades — muestras pequeñas no revelan la distribución real</td></tr>
+      <tr><td>5</td><td>Instrumentos calibrados con métodos validados (ver Gage R&R)</td></tr>
+      <tr><td>6</td><td>Sin cambios al proceso durante el estudio</td></tr>
+      <tr><td>7</td><td>Materiales representativos de producción normal</td></tr>
+      <tr><td>8</td><td>Sin ajustes durante la corrida</td></tr>
+      <tr><td>9</td><td>Sin interrupciones innecesarias</td></tr>
+      <tr><td>10</td><td>Registrar condiciones anormales que aporten variación</td></tr>
+      <tr><td>11</td><td>Herramientas en condición normal de producción</td></tr>
+      <tr><td>12</td><td>Proceso en estado estable — a menos que el estudio busque las anormalidades</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ====== ÍNDICES ====== -->
+<section id="indices">
+  <div class="tag">Fórmulas y lógica</div>
+  <h2>Índices Cp y Cpk</h2>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>Cp — Potencial</h3>
+      <p>¿Cabe la distribución dentro de la especificación? <strong style="color:var(--text)">No importa dónde está centrada.</strong></p>
+      <div class="formula">Cp = (USL − LSL) / (6σ)</div>
+      <p>Compara el ancho total de la tolerancia del cliente con el ancho natural del proceso (6σ = 99.73% de los datos).</p>
+    </div>
+    <div class="card">
+      <h3>Cpk — Capacidad Real</h3>
+      <p>¿Cabe Y está centrado? Toma el <strong style="color:var(--text)">peor caso</strong> — distancia más corta al límite más cercano.</p>
+      <div class="formula">Cpk = min[(USL−ȳ)/3σ, (ȳ−LSL)/3σ]</div>
+      <p>Si Cp = Cpk → proceso perfectamente centrado. Si Cp &gt; Cpk → hay descentrado. Siempre Cp ≥ Cpk.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Índices derivados</h3>
+    <div class="formula">σ_nivel = min[(USL−ȳ)/σ, (ȳ−LSL)/σ] = 3 × Cpk</div>
+    <div class="formula">σ_capacidad = 3 × Cp</div>
+    <p>σ_nivel te dice cuántas desviaciones estándar caben entre la media y el límite más cercano. Es exactamente 3 × Cpk.</p>
+  </div>
+
+  <div class="card">
+    <h3>Tabla de interpretación</h3>
+    <table>
+      <tr><th>Cpk</th><th>Clasificación</th><th>Situación</th><th>Acción</th></tr>
+      <tr><td><span class="badge badge-bad">CPK &lt; 1.00</span></td><td>No aceptable</td><td>Proceso produce defectos</td><td>Acción inmediata</td></tr>
+      <tr><td><span class="badge badge-warn">1.00 – 1.33</span></td><td>Aceptable marginal</td><td>Proceso pasa rozando</td><td>Mejorar urgente</td></tr>
+      <tr><td><span class="badge badge-ok">1.33 – 1.67</span></td><td>Bueno</td><td>Proceso capaz y centrado</td><td>Monitorear</td></tr>
+      <tr><td><span class="badge" style="background:rgba(0,229,255,.15);color:var(--accent)">≥ 1.67</span></td><td>Excelente / Six Sigma</td><td>Alta capacidad</td><td>Mantener</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Trampa cognitiva que comete todo el mundo</h3>
+    <p>Un Cp de 2.0 parece "excelente", pero si el proceso está muy descentrado, el Cpk puede ser 0.5 y estar produciendo miles de defectos. <strong style="color:var(--accent2)">Cp sin Cpk es información incompleta.</strong> Siempre reporta ambos.</p>
+  </div>
+</section>
+
+<!-- ====== LAB CPK ====== -->
+<section id="cpk-lab">
+  <div class="tag">Simulador interactivo</div>
+  <h2>⚡ Laboratorio CPK</h2>
+  <p>Mueve los sliders. Los índices y la gráfica se actualizan en tiempo real.</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+    <div>
+      <div class="slider-group">
+        <div class="slider-label"><span>LSL (Límite Inferior)</span><input class="slider-num-input" id="lslVal" type="number" value="4" step="0.5" oninput="syncSliderFromInput('lsl','lslVal')"></div>
+        <input type="range" id="lsl" min="-500" max="500" step="0.5" value="4" oninput="syncInputFromSlider('lsl','lslVal')">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>USL (Límite Superior)</span><input class="slider-num-input" id="uslVal" type="number" value="16" step="0.5" oninput="syncSliderFromInput('usl','uslVal')"></div>
+        <input type="range" id="usl" min="-500" max="500" step="0.5" value="16" oninput="syncInputFromSlider('usl','uslVal')">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>Media del proceso (ȳ)</span><input class="slider-num-input" id="meanVal" type="number" value="10" step="0.5" oninput="syncSliderFromInput('pmean','meanVal')"></div>
+        <input type="range" id="pmean" min="-500" max="500" step="0.5" value="10" oninput="syncInputFromSlider('pmean','meanVal')">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>Desviación estándar (σ)</span><input class="slider-num-input" id="sigmaVal" type="number" value="2" step="0.1" min="0.01" oninput="syncSliderFromInput('psigma','sigmaVal')"></div>
+        <input type="range" id="psigma" min="0.01" max="100" step="0.1" value="2" oninput="syncInputFromSlider('psigma','sigmaVal')">
+      </div>
+    </div>
+    <div>
+      <div class="card-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <div class="metric-card">
+          <div class="val" id="cpVal" style="color:var(--accent)">—</div>
+          <div class="lbl">Cp</div>
+        </div>
+        <div class="metric-card">
+          <div class="val" id="cpkVal">—</div>
+          <div class="lbl">Cpk</div>
+          <div class="verdict" id="cpkVerdict">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="val" id="sigNivel" style="color:var(--accent3)">—</div>
+          <div class="lbl">σ nivel</div>
+        </div>
+        <div class="metric-card">
+          <div class="val" id="sigCap" style="color:var(--accent2)">—</div>
+          <div class="lbl">σ capacidad</div>
+        </div>
+      </div>
+      <div class="cpk-bar-wrap">
+        <div class="slider-label"><span style="font-size:11px;color:var(--muted)">Cpk visual</span><span id="cpkBarLabel">0</span></div>
+        <div class="cpk-bar-track">
+          <div class="cpk-bar-fill" id="cpkBar" style="width:0%;background:var(--bad)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">
+          <span>0</span><span>1.00</span><span>1.33</span><span>1.67</span><span>2.00+</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="bellCanvas" height="200"></canvas>
+
+  <div class="card" style="margin-top:20px">
+    <h3>Paso a paso — cómo se calculó</h3>
+    <div id="calcSteps" style="font-family:'Space Mono',monospace;font-size:13px;line-height:2;color:#aaaacc"></div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h3>Diagnóstico automático</h3>
+    <p id="diagnostico" style="font-size:15px;color:var(--text)"></p>
+  </div>
+</section>
+
+<!-- ====== FPY TEORÍA ====== -->
+<section id="fpy-teoria">
+  <div class="tag">Datos discretos</div>
+  <h2>First Pass Yield (FPY)</h2>
+
+  <div class="card">
+    <h3>¿Por qué FPY y no Rendimiento?</h3>
+    <p>El <strong style="color:var(--text)">Rendimiento</strong> cuenta piezas buenas + piezas retrabajadas. Parece alto pero oculta el costo del retrabajo.</p>
+    <p>El <strong style="color:var(--accent)">FPY</strong> solo cuenta las piezas que salieron correctas <strong style="color:var(--text)">a la primera</strong>, sin ninguna corrección. Es la medida honesta.</p>
+    <div class="formula">FPY = Piezas buenas sin retrabajo (A) / Total de piezas (n)</div>
+    <div class="formula">Rendimiento = (A + B) / n  ← incluye retrabajadas, engaña</div>
+  </div>
+
+  <div class="card">
+    <h3>Métricas de datos discretos</h3>
+    <table>
+      <tr><th>Métrica</th><th>Fórmula</th><th>¿Qué mide?</th></tr>
+      <tr><td>DPU</td><td>Total defectos / Total unidades</td><td>Defectos promedio por pieza</td></tr>
+      <tr><td>DPMO</td><td>(Defectos / Oportunidades) × 1,000,000</td><td>Defectos por millón — comparable entre procesos</td></tr>
+      <tr><td>FPY estimado</td><td>e<sup>−DPU</sup></td><td>Estimación estadística del FPY real</td></tr>
+      <tr><td>Yield Final</td><td>FPY₁ × FPY₂ × … × FPYₙ</td><td>Yield acumulado de todo el proceso</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>La trampa del yield en serie</h3>
+    <p>En un proceso de 5 pasos, cada uno con 99% de yield, el yield final es:</p>
+    <div class="formula">0.99⁵ = 0.9510 → 95.1%</div>
+    <p>Cada paso multiplicativo <strong style="color:var(--accent2)">degrada el total</strong>. Un proceso largo con yields individuales altos puede tener un yield final pésimo. Esto es lo que Six Sigma ataca.</p>
+  </div>
+
+  <div class="card">
+    <h3>Paso a paso — cómo calcular FPY de un proceso</h3>
+    <div class="step-row">
+      <span class="step-num">1</span>
+      <div class="step-content">
+        <p><strong style="color:var(--text)">Contar el total de defectos</strong> en cada paso del proceso.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <span class="step-num">2</span>
+      <div class="step-content">
+        <p><strong style="color:var(--text)">Calcular piezas buenas por paso:</strong> piezas que entran al paso minus defectos de ese paso.</p>
+        <div class="formula">Piezas_buenas_paso_N = Piezas_que_entran − Defectos_paso_N</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <span class="step-num">3</span>
+      <div class="step-content">
+        <p><strong style="color:var(--text)">FPY por paso:</strong></p>
+        <div class="formula">FPY_paso_N = Piezas_buenas_paso_N / Piezas_que_entran_al_paso_N</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <span class="step-num">4</span>
+      <div class="step-content">
+        <p><strong style="color:var(--text)">Yield Final:</strong> producto de todos los FPY individuales.</p>
+        <div class="formula">Yield_Final = FPY₁ × FPY₂ × FPY₃ × … × FPYₙ</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== LAB FPY ====== -->
+<section id="fpy-lab">
+  <div class="tag">Simulador interactivo</div>
+  <h2>⚡ Laboratorio First Pass Yield</h2>
+  <p>Ingresa el tamaño del lote y los defectos por proceso. El sistema calcula todo automáticamente.</p>
+
+  <div class="card">
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:20px">
+      <div>
+        <div class="slider-label" style="margin-bottom:8px"><span>Tamaño del lote</span></div>
+        <input type="number" id="loteSize" min="1" max="9999999" step="1" value="2000"
+          oninput="updateFPY()"
+          style="background:var(--surface);border:1px solid var(--border);color:var(--accent);font-family:'Space Mono',monospace;font-size:20px;font-weight:700;padding:8px 14px;border-radius:8px;width:160px;outline:none;text-align:center;">
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;">piezas</div>
+      </div>
+      <div>
+        <label style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);">N° de procesos:</label>
+        <select id="numProc" onchange="buildProcessRows()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;padding:8px 12px;border-radius:6px;margin-left:8px;cursor:pointer">
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="processRows"></div>
+
+    <div id="fpy-chain" class="flow-chain" style="margin-top:20px"></div>
+  </div>
+
+  <div class="card-grid" style="margin-top:4px">
+    <div class="metric-card">
+      <div class="val" id="totalDefVal" style="color:var(--accent2)">—</div>
+      <div class="lbl">Total Defectos</div>
+    </div>
+    <div class="metric-card">
+      <div class="val" id="yieldFinalVal" style="color:var(--accent)">—</div>
+      <div class="lbl">Yield Final</div>
+      <div class="verdict" id="yieldVerdict">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="val" id="dpuVal" style="color:var(--accent3)">—</div>
+      <div class="lbl">DPU</div>
+    </div>
+    <div class="metric-card">
+      <div class="val" id="dpmoVal" style="color:var(--warn)">—</div>
+      <div class="lbl">DPMO</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">(1 oportunidad/unidad)</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h3>Tabla detallada</h3>
+    <table id="fpyTable">
+      <tr><th>Proceso</th><th>Entrada</th><th>Defectos</th><th>Salida buena</th><th>FPY paso</th><th>Estado</th></tr>
+    </table>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h3>Paso a paso mostrado</h3>
+    <div id="fpyCalcSteps" style="font-family:'Space Mono',monospace;font-size:12px;line-height:2;color:#aaaacc"></div>
+  </div>
+</section>
+
+<!-- ====== TABLA SIGMA ====== -->
+<section id="sigma-tabla">
+  <div class="tag">Referencia rápida</div>
+  <h2>Tabla Sigma vs Cpk vs DPMO</h2>
+  <p>La metodología Six Sigma asume un desplazamiento real de la media de ±1.5σ a lo largo del tiempo. Por eso un proceso de 6σ en papel arroja 3.4 DPMO (no 0).</p>
+
+  <div class="card">
+    <table class="sigma-table">
+      <tr><th>Nivel σ</th><th>Cpk</th><th>DPMO</th><th>Defectos %</th><th>Calidad %</th><th>Nivel</th></tr>
+      <tr><td>3.0 σ</td><td>1.00</td><td>66,807</td><td>6.68%</td><td>93.32%</td><td><span class="badge badge-bad">Pobre</span></td></tr>
+      <tr><td>3.5 σ</td><td>1.17</td><td>22,750</td><td>2.28%</td><td>97.72%</td><td><span class="badge badge-bad">Pobre</span></td></tr>
+      <tr><td>4.0 σ</td><td>1.33</td><td>6,210</td><td>0.62%</td><td>99.38%</td><td><span class="badge badge-ok">Bueno</span></td></tr>
+      <tr><td>4.5 σ</td><td>1.50</td><td>1,350</td><td>0.13%</td><td>99.87%</td><td><span class="badge badge-ok">Bueno</span></td></tr>
+      <tr><td>5.0 σ</td><td>1.67</td><td>233</td><td>0.023%</td><td>99.977%</td><td><span class="badge" style="background:rgba(0,229,255,.15);color:var(--accent)">Excelente</span></td></tr>
+      <tr><td>5.5 σ</td><td>1.83</td><td>32</td><td>0.003%</td><td>99.997%</td><td><span class="badge" style="background:rgba(0,229,255,.15);color:var(--accent)">Excelente</span></td></tr>
+      <tr><td>6.0 σ</td><td>2.00</td><td>3.4</td><td>0.0003%</td><td>99.9997%</td><td><span class="badge" style="background:rgba(200,255,0,.15);color:var(--accent3)">Six Sigma!</span></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Conversiones rápidas</h3>
+    <div class="formula">σ_nivel = 3 × Cpk</div>
+    <div class="formula">σ_capacidad = 3 × Cp</div>
+    <div class="formula">Cp ≥ Cpk  (siempre)</div>
+    <div class="formula">Si Cp = Cpk → proceso perfectamente centrado</div>
+    <p style="margin-top:12px">La razón Cp/Cpk = σ_capacidad/σ_nivel indica el grado de descentrado. Si la razón es 1, perfecto. Cuanto más grande, peor el centrado relativo.</p>
+  </div>
+</section>
+
+<script>
+// ========== NAVIGATION ==========
+function showSection(id, btn) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'cpk-lab') { updateCPK(); }
+  if (id === 'fpy-lab') { buildProcessRows(); }
+}
+
+// ========== CPK LAB ==========
+function gaussian(x, mean, sigma) {
+  return Math.exp(-0.5 * ((x - mean) / sigma) ** 2) / (sigma * Math.sqrt(2 * Math.PI));
+}
+
+function updateCPK() {
+  const lsl = parseFloat(document.getElementById('lsl').value);
+  const usl = parseFloat(document.getElementById('usl').value);
+  const mean = parseFloat(document.getElementById('pmean').value);
+  const sigma = parseFloat(document.getElementById('psigma').value);
+
+  document.getElementById('lslVal').value = lsl;
+  document.getElementById('uslVal').value = usl;
+  document.getElementById('meanVal').value = mean;
+  document.getElementById('sigmaVal').value = sigma;
+
+  if (usl <= lsl || sigma <= 0) return;
+
+  const cp = (usl - lsl) / (6 * sigma);
+  const cpkUpper = (usl - mean) / (3 * sigma);
+  const cpkLower = (mean - lsl) / (3 * sigma);
+  const cpk = Math.min(cpkUpper, cpkLower);
+  const sigNivel = cpk * 3;
+  const sigCap = cp * 3;
+
+  document.getElementById('cpVal').textContent = cp.toFixed(3);
+  document.getElementById('cpkVal').textContent = cpk.toFixed(3);
+  document.getElementById('sigNivel').textContent = sigNivel.toFixed(2);
+  document.getElementById('sigCap').textContent = sigCap.toFixed(2);
+
+  // Color and verdict
+  let color, verdict, bg;
+  if (cpk < 1.0) { color = 'var(--bad)'; verdict = '✗ No aceptable'; bg = 'rgba(255,77,109,.2)'; }
+  else if (cpk < 1.33) { color = 'var(--warn)'; verdict = '~ Marginal'; bg = 'rgba(255,179,0,.2)'; }
+  else if (cpk < 1.67) { color = 'var(--ok)'; verdict = '✓ Bueno'; bg = 'rgba(0,229,160,.2)'; }
+  else { color = 'var(--accent)'; verdict = '★ Excelente'; bg = 'rgba(0,229,255,.2)'; }
+
+  const cpkEl = document.getElementById('cpkVal');
+  cpkEl.style.color = color;
+  const vEl = document.getElementById('cpkVerdict');
+  vEl.textContent = verdict;
+  vEl.style.background = bg;
+  vEl.style.color = color;
+
+  // Bar
+  const pct = Math.min(cpk / 2.0, 1) * 100;
+  const bar = document.getElementById('cpkBar');
+  bar.style.width = pct + '%';
+  bar.style.background = color;
+  document.getElementById('cpkBarLabel').textContent = cpk.toFixed(3);
+
+  // Steps
+  document.getElementById('calcSteps').innerHTML = `
+<span style="color:var(--accent)">// Dados: LSL=${lsl}, USL=${usl}, ȳ=${mean}, σ=${sigma}</span>
+Cp  = (${usl} − ${lsl}) / (6 × ${sigma}) = ${(usl-lsl).toFixed(2)} / ${(6*sigma).toFixed(2)} = <strong style="color:var(--accent)">${cp.toFixed(3)}</strong>
+
+CPKupper = (${usl} − ${mean}) / (3 × ${sigma}) = ${(usl-mean).toFixed(2)} / ${(3*sigma).toFixed(2)} = ${cpkUpper.toFixed(3)}
+CPKlower = (${mean} − ${lsl}) / (3 × ${sigma}) = ${(mean-lsl).toFixed(2)} / ${(3*sigma).toFixed(2)} = ${cpkLower.toFixed(3)}
+Cpk = min(${cpkUpper.toFixed(3)}, ${cpkLower.toFixed(3)}) = <strong style="color:${color}">${cpk.toFixed(3)}</strong>
+
+σ_nivel     = 3 × Cpk = 3 × ${cpk.toFixed(3)} = <strong style="color:var(--accent3)">${sigNivel.toFixed(2)}</strong>
+σ_capacidad = 3 × Cp  = 3 × ${cp.toFixed(3)} = <strong style="color:var(--accent2)">${sigCap.toFixed(2)}</strong>
+`;
+
+  // Diagnostico
+  let diag = '';
+  const diff = cp - cpk;
+  if (cpk < 1) {
+    if (diff > 0.2) diag = `Problema doble: el proceso <strong style="color:var(--accent2)">no cabe</strong> dentro de especificaciones Y está <strong style="color:var(--accent2)">descentrado</strong>. Primero reduce σ, luego centra la media.`;
+    else diag = `La variación es el problema principal. El proceso no cabe en la tolerancia (Cp=${cp.toFixed(2)}). Reduce σ.`;
+  } else if (cpk < 1.33) {
+    if (diff > 0.15) diag = `El potencial es bueno (Cp=${cp.toFixed(2)}) pero el proceso está <strong style="color:var(--warn)">descentrado</strong>. Mueve la media hacia ${((lsl+usl)/2).toFixed(1)} sin tocar σ.`;
+    else diag = `Proceso marginalmente capaz. Reduce la variación o ajusta el centrado.`;
+  } else {
+    if (diff > 0.15) diag = `Cp excelente (${cp.toFixed(2)}) pero Cpk menor indica descentrado. Centra la media en ${((lsl+usl)/2).toFixed(1)}.`;
+    else diag = `Proceso capaz y centrado. Cp≈Cpk confirma buen centrado. Mantener y monitorear.`;
+  }
+  document.getElementById('diagnostico').innerHTML = diag;
+
+  // Draw bell
+  drawBell(lsl, usl, mean, sigma, cp, cpk);
+}
+
+function drawBell(lsl, usl, mean, sigma, cp, cpk) {
+  const canvas = document.getElementById('bellCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 800;
+  const H = 200;
+  canvas.width = W;
+  canvas.height = H;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#16161f';
+  ctx.fillRect(0, 0, W, H);
+
+  const range = Math.max(usl - lsl, sigma * 8);
+  const xMin = Math.min(lsl, mean) - sigma * 4;
+  const xMax = Math.max(usl, mean) + sigma * 4;
+  const toX = x => ((x - xMin) / (xMax - xMin)) * (W - 60) + 30;
+
+  // Find peak for scaling
+  const peak = gaussian(mean, mean, sigma);
+  const toY = v => H - 20 - (v / peak) * (H - 40);
+
+  // Shade out-of-spec
+  ctx.fillStyle = 'rgba(255,77,109,0.12)';
+  ctx.fillRect(0, 0, toX(lsl), H);
+  ctx.fillStyle = 'rgba(255,77,109,0.12)';
+  ctx.fillRect(toX(usl), 0, W, H);
+
+  // Spec lines
+  [lsl, usl].forEach((v, i) => {
+    ctx.strokeStyle = '#ff4d6d';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(toX(v), 10);
+    ctx.lineTo(toX(v), H - 20);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ff4d6d';
+    ctx.font = '11px Space Mono, monospace';
+    ctx.fillText(i === 0 ? 'LSL' : 'USL', toX(v) - 15, 20);
+  });
+
+  // Mean line
+  ctx.strokeStyle = '#00e5ff';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(toX(mean), 10);
+  ctx.lineTo(toX(mean), H - 20);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Bell fill
+  ctx.beginPath();
+  for (let px = 0; px <= W; px++) {
+    const xv = xMin + (px / W) * (xMax - xMin);
+    const yv = gaussian(xv, mean, sigma);
+    const inSpec = xv >= lsl && xv <= usl;
+    const px_ = toX(xv);
+    const py = toY(yv);
+    if (px === 0) ctx.moveTo(px_, py);
+    else ctx.lineTo(px_, py);
+  }
+  ctx.lineTo(W, H - 20);
+  ctx.lineTo(0, H - 20);
+  ctx.closePath();
+
+  // Gradient
+  const grad = ctx.createLinearGradient(toX(lsl), 0, toX(usl), 0);
+  grad.addColorStop(0, 'rgba(0,229,255,0.05)');
+  grad.addColorStop(0.5, 'rgba(0,229,255,0.25)');
+  grad.addColorStop(1, 'rgba(0,229,255,0.05)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Bell stroke
+  ctx.beginPath();
+  for (let px = 0; px <= W; px++) {
+    const xv = xMin + (px / W) * (xMax - xMin);
+    const yv = gaussian(xv, mean, sigma);
+    const px_ = toX(xv);
+    const py = toY(yv);
+    if (px === 0) ctx.moveTo(px_, py);
+    else ctx.lineTo(px_, py);
+  }
+  ctx.strokeStyle = '#00e5ff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#00e5ff';
+  ctx.font = '11px Space Mono, monospace';
+  ctx.fillText('ȳ=' + mean, toX(mean) + 5, H - 22);
+}
+
+// ========== FPY LAB ==========
+const DEFAULT_DEFECTS = [10, 60, 75, 50, 30, 20];
+
+function buildProcessRows() {
+  const n = parseInt(document.getElementById('numProc').value);
+  const cont = document.getElementById('processRows');
+  cont.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const def = DEFAULT_DEFECTS[i] || 20;
+    cont.innerHTML += `
+      <div class="process-row">
+        <label>Proceso ${i + 1}</label>
+        <input type="number" id="def${i}" value="${def}" min="0" max="9999" oninput="updateFPY()">
+        <span style="font-size:12px;color:var(--muted)">defectos</span>
+        <div class="process-yield" id="yield${i}">—</div>
+      </div>`;
+  }
+  updateFPY();
+}
+
+function updateFPY() {
+  const n = parseInt(document.getElementById('numProc').value);
+  const lote = parseInt(document.getElementById('loteSize').value) || 1000;
+
+  let entrada = lote;
+  let yieldFinal = 1;
+  let totalDefectos = 0;
+  let steps = `<span style="color:var(--accent)">// Lote inicial: ${lote} piezas, ${n} procesos</span>\n\n`;
+  const chain = [];
+  const tableRows = [];
+
+  chain.push({ name: 'Inicio', val: lote, color: 'var(--muted)' });
+
+  for (let i = 0; i < n; i++) {
+    const defEl = document.getElementById(`def${i}`);
+    if (!defEl) continue;
+    const defectos = Math.max(0, parseInt(defEl.value) || 0);
+    totalDefectos += defectos;
+    const salida = Math.max(0, entrada - defectos);
+    const fpy = entrada > 0 ? salida / entrada : 0;
+    yieldFinal *= fpy;
+    steps += `P${i+1}: entrada=${entrada} | defectos=${defectos} | salida=${salida}\n`;
+    steps += `  FPY_P${i+1} = ${salida}/${entrada} = <strong style="color:var(--accent)">${(fpy*100).toFixed(2)}%</strong>\n\n`;
+
+    let yColor = fpy >= 0.99 ? 'var(--ok)' : fpy >= 0.95 ? 'var(--warn)' : 'var(--bad)';
+    document.getElementById(`yield${i}`).style.color = yColor;
+    document.getElementById(`yield${i}`).textContent = (fpy * 100).toFixed(2) + '%';
+
+    chain.push({ name: `P${i+1}`, val: salida, color: yColor, fpy: (fpy*100).toFixed(1)+'%' });
+    tableRows.push({ proc: `Proceso ${i+1}`, entrada, defectos, salida, fpy });
+    entrada = salida;
+  }
+
+  steps += `Yield_Final = ${Array.from({length:n},(_,i)=>{ const d=document.getElementById(`def${i}`); return '—'; }).join(' × ')}\n`;
+  steps += `Yield_Final = <strong style="color:var(--accent3)">${(yieldFinal*100).toFixed(2)}%</strong>\n`;
+  steps += `\nDPU = ${totalDefectos} / ${lote} = <strong style="color:var(--accent2)">${(totalDefectos/lote).toFixed(4)}</strong>\n`;
+  const dpmo = (totalDefectos / lote) * 1000000;
+  steps += `DPMO = (${totalDefectos}/${lote}) × 1,000,000 = <strong style="color:var(--warn)">${dpmo.toFixed(0)}</strong>`;
+
+  document.getElementById('fpyCalcSteps').innerHTML = steps;
+  document.getElementById('totalDefVal').textContent = totalDefectos.toLocaleString();
+  document.getElementById('yieldFinalVal').textContent = (yieldFinal*100).toFixed(2)+'%';
+  document.getElementById('dpuVal').textContent = (totalDefectos/lote).toFixed(4);
+  document.getElementById('dpmoVal').textContent = Math.round(dpmo).toLocaleString();
+
+  // Verdict
+  let yv, yc;
+  if (yieldFinal >= 0.99) { yv = '✓ Excelente'; yc = 'var(--ok)'; }
+  else if (yieldFinal >= 0.95) { yv = '~ Aceptable'; yc = 'var(--warn)'; }
+  else { yv = '✗ Deficiente'; yc = 'var(--bad)'; }
+  const vEl = document.getElementById('yieldVerdict');
+  vEl.textContent = yv;
+  vEl.style.background = yc === 'var(--ok)' ? 'rgba(0,229,160,.2)' : yc === 'var(--warn)' ? 'rgba(255,179,0,.2)' : 'rgba(255,77,109,.2)';
+  vEl.style.color = yc;
+  document.getElementById('yieldFinalVal').style.color = yc;
+
+  // Flow chain
+  const chainEl = document.getElementById('fpy-chain');
+  chainEl.innerHTML = chain.map((c, idx) => `
+    ${idx > 0 ? `<div class="flow-arrow">→</div><div class="flow-arrow" style="font-size:11px;color:${c.color};margin-left:-4px">${c.fpy||''}</div><div class="flow-arrow">→</div>` : ''}
+    <div class="flow-box">
+      <div class="pname">${c.name}</div>
+      <div class="pval" style="color:${c.color}">${c.val.toLocaleString()}</div>
+    </div>
+  `).join('');
+
+  // Table
+  const tbl = document.getElementById('fpyTable');
+  const rows = tableRows.map(r => {
+    let bc = r.fpy >= 0.99 ? 'badge-ok' : r.fpy >= 0.95 ? 'badge-warn' : 'badge-bad';
+    return `<tr>
+      <td>${r.proc}</td>
+      <td>${r.entrada.toLocaleString()}</td>
+      <td style="color:var(--accent2)">${r.defectos}</td>
+      <td>${r.salida.toLocaleString()}</td>
+      <td><span class="badge ${bc}">${(r.fpy*100).toFixed(2)}%</span></td>
+      <td>${r.defectos === 0 ? '<span class="badge badge-ok">Sin defectos</span>' : r.fpy < 0.9 ? '<span class="badge badge-bad">Cuello de botella</span>' : ''}</td>
+    </tr>`;
+  }).join('');
+  tbl.innerHTML = `<tr><th>Proceso</th><th>Entrada</th><th>Defectos</th><th>Salida buena</th><th>FPY paso</th><th>Estado</th></tr>` + rows;
+}
+
+// ========== SLIDER <-> INPUT SYNC ==========
+function syncInputFromSlider(sliderId, inputId) {
+  const val = document.getElementById(sliderId).value;
+  document.getElementById(inputId).value = val;
+  updateCPK();
+}
+function syncSliderFromInput(sliderId, inputId) {
+  const val = parseFloat(document.getElementById(inputId).value);
+  if (isNaN(val)) return;
+  const slider = document.getElementById(sliderId);
+  // Extend slider range dynamically if needed
+  if (val < parseFloat(slider.min)) slider.min = val;
+  if (val > parseFloat(slider.max)) slider.max = val;
+  slider.value = val;
+  updateCPK();
+}
+
+// Init
+buildProcessRows();
+updateCPK();
+</script>
+</body>
+</html>
